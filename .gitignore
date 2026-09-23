@@ -2,4 +2,4 @@
 .env
 .env.*
 !.env.example
-data/sync-config.js
+#data/sync-config.js
