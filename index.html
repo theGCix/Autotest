@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>TOPS Conocimiento</title>
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+<div class="brand">
+<div class="brandmark">T</div>
+<div class="brandtext">
+<b id="brandName">TOPS Conocimiento</b>
+<span>Planta Tops</span>
+</div>
+</div>
+<span id="syncBadge" class="syncbadge local">Local</span>
+<button aria-label="Datos" class="iconbtn" onclick="openDataModal()">⋮</button>
+</header>
+<main>
+<section class="view active" id="view-home">
+<div class="page-title">Buscador TOPS</div>
+<div class="page-sub">Encuentra instructivos y páginas relacionadas dentro de la biblioteca offline.</div>
+<div class="assistantbox">
+<div class="assistanthead">
+<div>
+<b>¿Qué necesitas encontrar?</b>
+<span>Busca por equipo, operación, parámetro, condición o código.</span>
+</div>
+<span class="offlinepill">Offline</span>
+</div>
+<div class="assistantinput">
+<textarea id="assistantQuery" rows="2" placeholder="Ej.: presión de rodillos Seydel 682" onkeydown="assistantKey(event)">
+</textarea>
+<button class="assistantclear" aria-label="Limpiar consulta" title="Limpiar" onclick="resetAssistant(true)">×</button>
+<button class="btn" onclick="askAssistant()">Consultar</button>
+</div>
+<div id="assistantAnswer" class="assistantanswer">
+<div class="notice">Escribe una consulta. Se mostrarán los documentos y páginas más relacionados.</div>
+</div>
+</div>
+</section>
+<section class="view" id="view-docs">
+<div class="page-title">Documentos</div>
+<div class="page-sub">Biblioteca completa disponible sin conexión.</div>
+<div class="filters">
+<div class="field">
+<label>Buscar</label>
+<input id="docSearch" oninput="renderDocs()" placeholder="Código, título, equipo o palabra…"/>
+</div>
+<div class="field">
+<label>Zona</label>
+<select id="docZone" onchange="renderDocs()">
+</select>
+</div>
+<div class="field">
+<label>Categoría</label>
+<select id="docCat" onchange="renderDocs()">
+</select>
+</div>
+</div>
+<div class="counter" id="docCount">
+</div>
+<div id="docList">
+</div>
+</section>
+<section class="view" id="view-self">
+<div class="page-title">Auto test</div>
+<div class="page-sub">Entrenamiento personal y progreso técnico.</div>
+<div class="section loginbox" id="selfLogin">
+<h3>Ingresar</h3>
+<div class="field">
+<label>Código de trabajador</label>
+<input id="selfCode" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="4 dígitos"/>
+</div>
+<div class="field">
+<label>PIN personal</label>
+<input id="selfPin" inputmode="numeric" autocomplete="new-password" maxlength="5" placeholder="5 dígitos" type="password"/>
+</div>
+<div class="btnrow">
+<button class="btn" onclick="selfLogin()">Ingresar</button>
+</div>
+</div>
+<div class="hidden" id="selfArea">
+</div>
+</section>
+<section class="view" id="view-eval">
+<div class="page-title">Evaluar</div>
+<div class="page-sub">Gestión de conocimiento técnico.</div>
+<div class="tabs">
+<button class="tab active" id="tabSup" onclick="evalTab('sup')">Supervisor → Operador</button>
+<button class="tab" id="tabChief" onclick="evalTab('chief')">Jefatura → Supervisor</button>
+<button class="tab" id="tabManage" onclick="evalTab('manage')">Gestión</button>
+</div>
+<div id="evalSup">
+</div>
+<div class="hidden" id="evalChief">
+</div>
+<div class="hidden" id="evalManage">
+</div>
+</section>
+<section class="view" id="view-improve">
+<div class="page-title">Mejorar</div>
+<div class="page-sub">Registra oportunidades de mejora sin mezclar evaluación, instructivos y aplicación.</div>
+<div class="section">
+<div class="field">
+<label>Código de trabajador</label>
+<input id="sugCode" inputmode="numeric" maxlength="4" placeholder="4 dígitos"/>
+</div>
+<div class="improvegrid" style="margin-top:14px">
+<button class="improvecard active" data-area="Instructivo" onclick="setSuggestionArea('Instructivo')">
+<b>Instructivo</b>
+<span>Actualizar, aclarar, corregir o solicitar un IT.</span>
+</button>
+<button class="improvecard" data-area="Aplicación" onclick="setSuggestionArea('Aplicación')">
+<b>Aplicación</b>
+<span>Funcionamiento, interfaz, búsqueda o evaluación.</span>
+</button>
+<button class="improvecard" data-area="Otra mejora" onclick="setSuggestionArea('Otra mejora')">
+<b>Otra mejora</b>
+<span>Idea general sobre gestión del conocimiento.</span>
+</button>
+</div>
+<div class="filters" style="margin-top:14px">
+<div class="field">
+<label>Tipo de mejora</label>
+<select id="sugSubtype">
+</select>
+</div>
+<div class="field">
+<label>Zona</label>
+<select id="sugZone">
+</select>
+</div>
+</div>
+<div id="sugDocArea">
+<div class="field">
+<label>Buscar instructivo</label>
+<input id="sugDocSearch" oninput="renderSuggestionDocs()" placeholder="Código, equipo o título…"/>
+</div>
+<div id="sugDocResults">
+</div>
+<div class="notice hidden" id="sugSelected">
+</div>
+</div>
+<div class="field" style="margin-top:12px">
+<label>¿Qué propones?</label>
+<textarea id="sugText" placeholder="Describe la oportunidad de forma breve y concreta.">
+</textarea>
+</div>
+<div class="btnrow">
+<button class="btn" onclick="saveSuggestion()">Guardar sugerencia</button>
+</div>
+</div>
+</section>
+</main>
+<nav class="bottomnav">
+<button class="navitem active" data-view="home" onclick="navigate('home')">
+<span class="ni">⌂</span>Inicio</button>
+<button class="navitem" data-view="docs" onclick="navigate('docs')">
+<span class="ni">▤</span>Documentos</button>
+<button class="navitem" data-view="self" onclick="navigate('self')">
+<span class="ni">✓</span>Auto test</button>
+<button class="navitem" data-view="eval" onclick="navigate('eval')">
+<span class="ni">◎</span>Evaluar</button>
+<button class="navitem" data-view="improve" onclick="navigate('improve')">
+<span class="ni">＋</span>Mejorar</button>
+</nav>
+</div>
+<div class="modal" id="pdfModal">
+<div class="modalbox pdfmodalbox">
+<div class="modalhead">
+<div>
+<b id="pdfTitle">Documento</b>
+<div class="sourcepage" id="pdfPageHint">
+</div>
+</div>
+<div style="display:flex;gap:8px">
+<button class="iconbtn" aria-label="Abrir fuera" title="Abrir fuera" onclick="openPdfExternal()">↗</button>
+<button class="iconbtn" aria-label="Cerrar" onclick="closePdf()">×</button>
+</div>
+</div>
+<div class="pdfbox">
+<iframe id="pdfFrame" title="Instructivo">
+</iframe>
+</div>
+</div>
+</div>
+<div class="modal" id="dataModal">
+<div class="modalbox">
+<div class="modalhead">
+<b>Datos y respaldo</b>
+<button class="iconbtn" onclick="closeModal('dataModal')">×</button>
+</div>
+<div class="notice" id="dataInfo">
+</div>
+<div class="btnrow">
+<button class="btn secondary" onclick="exportBackup()">Exportar respaldo</button>
+<button class="btn secondary" onclick="document.getElementById('backupInput').click()">Importar respaldo</button>
+<button class="btn secondary" onclick="syncNow()">Sincronizar ahora</button>
+<button class="btn secondary" onclick="exportAllCSV()">Exportar CSV</button>
+<button class="btn secondary" onclick="exportSuggestionsCSV()">Sugerencias CSV</button>
+</div>
+<input accept="application/json,.json" class="hidden" id="backupInput" onchange="importBackup(this.files[0])" type="file"/>
+<div class="small" id="appInfo" style="margin-top:15px">
+</div>
+</div>
+</div>
+<div class="modal" id="accessModal">
+<div class="modalbox narrow">
+<div class="modalhead">
+<b id="accessTitle">Acceso</b>
+<button class="iconbtn" onclick="cancelAuthModal('accessModal')">×</button>
+</div>
+<div class="notice" id="accessHelp">
+</div>
+<div class="field">
+<label>Código de trabajador</label>
+<input id="accessCode" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="4 dígitos"/>
+</div>
+<div class="field" style="margin-top:10px">
+<label>DNI</label>
+<input id="accessDni" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="8 dígitos" type="password"/>
+</div>
+<div class="field" id="accessPinWrap" style="margin-top:10px">
+<label>Nuevo PIN</label>
+<input id="accessPin" inputmode="numeric" autocomplete="new-password" maxlength="5" placeholder="5 dígitos" type="password"/>
+</div>
+<div class="btnrow">
+<button class="btn" onclick="saveAccess()">Guardar</button>
+</div>
+</div>
+</div>
+<div class="modal" id="pinErrorModal">
+<div class="modalbox narrow">
+<div class="modalhead">
+<b>PIN incorrecto</b>
+<button class="iconbtn" onclick="cancelAuthModal('pinErrorModal')">×</button>
+</div>
+<div class="notice">El PIN ingresado no coincide con este código.</div>
+<div class="btnrow">
+<button class="btn secondary" onclick="startForgotPin()">¿Olvidaste tu PIN?</button>
+<button class="btn" onclick="cancelAuthModal('pinErrorModal')">Volver</button>
+</div>
+</div>
+</div>
+<div class="modal" id="sourceModal">
+<div class="modalbox">
+<div class="modalhead">
+<b id="sourceTitle">Fuente</b>
+<button class="iconbtn" onclick="closeModal('sourceModal')">×</button>
+</div>
+<div id="sourceContext" class="sourcecontext">
+</div>
+<div class="btnrow">
+<button class="btn" id="sourceOpenBtn">Abrir instructivo</button>
+<button class="btn secondary" onclick="closeModal('sourceModal')">Cerrar</button>
+</div>
+</div>
+</div>
+<div class="toast" id="toast">
+</div>
+<script src="data/app-config.js"></script>
+<script src="data/sync-config.js"></script>
+<script src="src/sync.js"></script>
+<script src="src/app.js"></script>
+<script src="src/v19-overrides.js"></script>
+<script src="src/v20-compat.js"></script>
+</body>
+</html>

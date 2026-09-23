@@ -1,0 +1,5 @@
+# Secretos: no subir a git.
+.env
+.env.*
+!.env.example
+data/sync-config.js
