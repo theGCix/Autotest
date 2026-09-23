@@ -1,0 +1,10 @@
+{
+  "name": "TOPS Conocimiento",
+  "short_name": "TOPS",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a2540",
+  "icons": []
+}
