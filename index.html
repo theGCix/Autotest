@@ -14,6 +14,25 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });
+  navigator.serviceWorker.addEventListener('message', e => {
+    const el = document.getElementById('docsCacheStatus');
+    if (!el || !e.data) return;
+    if (e.data.type === 'DOCS_CACHE_PROGRESS') {
+      el.textContent = `Descargando PDFs para offline: ${e.data.done}/${e.data.total}` + (e.data.failed ? ` (${e.data.failed} con error)` : '');
+    } else if (e.data.type === 'DOCS_CACHE_DONE') {
+      el.textContent = e.data.failed
+        ? `PDFs listos para offline: ${e.data.total - e.data.failed}/${e.data.total} (${e.data.failed} no se pudieron descargar)`
+        : `Todos los PDFs (${e.data.total}) están disponibles sin conexión.`;
+    }
+  });
+}
+function downloadDocsOffline(){
+  const el = document.getElementById('docsCacheStatus');
+  if (!('serviceWorker' in navigator)) { if(el) el.textContent = 'Este navegador no soporta descarga offline.'; return; }
+  navigator.serviceWorker.ready.then(reg => {
+    if (el) el.textContent = 'Iniciando descarga de PDFs…';
+    reg.active && reg.active.postMessage({ type: 'CACHE_DOCS_NOW' });
+  });
 }
 </script>
 <div class="app">
@@ -209,6 +228,8 @@ if ('serviceWorker' in navigator) {
 <button class="btn secondary" onclick="exportBackup()">Exportar respaldo</button>
 <button class="btn secondary" onclick="document.getElementById('backupInput').click()">Importar respaldo</button>
 <button class="btn secondary" onclick="syncNow()">Sincronizar ahora</button>
+<button class="btn secondary" onclick="downloadDocsOffline()">Descargar PDFs para offline</button>
+<div id="docsCacheStatus" style="font-size:13px;color:var(--muted);margin:4px 0"></div>
 <button class="btn secondary" onclick="exportAllCSV()">Exportar CSV</button>
 <button class="btn secondary" onclick="exportSuggestionsCSV()">Sugerencias CSV</button>
 </div>

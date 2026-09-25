@@ -1,17 +1,22 @@
 /*
- * Service Worker — deja instalada la app (HTML/CSS/JS/config) en el
- * dispositivo la primera vez que carga con Internet, para que después
- * abra sin conexión. Los datos (usuarios, evaluaciones) siguen viviendo
- * en localStorage como siempre — esto solo cachea los archivos de la app.
+ * Service Worker — dos cachés separados:
  *
- * IMPORTANTE: sube de versión CACHE_NAME cada vez que cambies app.js,
- * sync.js, styles.css, index.html o app-config.js y quieras que las
- * tablets ya instaladas tomen la versión nueva.
+ *  - CACHE_SHELL: el código de la app (HTML/CSS/JS/config). Se reemplaza
+ *    completo cada vez que subes CACHE_SHELL_VERSION.
+ *  - CACHE_DOCS: los 210 PDF. NO se borra cuando actualizas el código —
+ *    así no hay que volver a descargar 113 MB cada vez que corriges un
+ *    detalle de la app. Solo se vuelve a llenar si falta un archivo.
+ *
+ * Súbele el número a CACHE_SHELL_VERSION cuando cambies app.js, sync.js,
+ * styles.css, index.html o app-config.js y quieras que las tablets tomen
+ * la versión nueva. Solo súbele el número a CACHE_DOCS_VERSION si de
+ * verdad quieres forzar una re-descarga completa de todos los PDF.
  */
-const CACHE_NAME = 'tops-shell-v1';
+const CACHE_SHELL_VERSION = 'v2';
+const CACHE_DOCS_VERSION = 'v1';
+const CACHE_SHELL = 'tops-shell-' + CACHE_SHELL_VERSION;
+const CACHE_DOCS = 'tops-docs-' + CACHE_DOCS_VERSION;
 
-// Rutas relativas al lugar donde vive este sw.js (funciona igual si el
-// sitio está en la raíz o en un subpath como /Autotest/).
 const SHELL_FILES = [
   './',
   './index.html',
@@ -21,12 +26,13 @@ const SHELL_FILES = [
   './src/v19-overrides.js',
   './src/v20-compat.js',
   './data/app-config.js',
-  './data/sync-config.js'
+  './data/sync-config.js',
+  './data/docs-manifest.json'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(CACHE_SHELL)
       .then(cache => cache.addAll(SHELL_FILES))
       .then(() => self.skipWaiting())
   );
@@ -34,37 +40,78 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(names =>
-      Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
-    ).then(() => self.clients.claim())
+    caches.keys().then(names => Promise.all(
+      names
+        .filter(n => n.startsWith('tops-shell-') && n !== CACHE_SHELL) // los docs NO se tocan aquí
+        .map(n => caches.delete(n))
+    )).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', event => {
   const req = event.request;
-
-  // Nunca intervenir en lo que no sea GET (los POST/PATCH de sincronización
-  // a Supabase deben ir siempre directo a la red, nunca a la caché).
   if (req.method !== 'GET') return;
-
-  // Nunca cachear llamadas a Supabase (auth/rest): esos datos deben ser
-  // siempre en vivo, no una copia vieja.
   if (req.url.includes('.supabase.co')) return;
+
+  const isDoc = req.url.includes('/docs/') && req.url.toLowerCase().endsWith('.pdf');
+  const cacheName = isDoc ? CACHE_DOCS : CACHE_SHELL;
 
   event.respondWith(
     caches.match(req).then(cached => {
       const network = fetch(req).then(res => {
-        // Guarda una copia fresca para la próxima vez que no haya conexión.
         if (res && res.ok) {
           const copy = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+          caches.open(cacheName).then(cache => cache.put(req, copy));
         }
         return res;
-      }).catch(() => cached); // sin Internet: usa lo que haya en caché
-
-      // Muestra la caché de inmediato si existe (rápido y funciona offline);
-      // igual actualiza en segundo plano para la próxima vez.
+      }).catch(() => cached);
       return cached || network;
     })
   );
+});
+
+// ---------------------------------------------------------------
+// Descarga completa de los PDF a pedido (botón "Descargar PDFs")
+// o automáticamente poco después de instalarse, para que el kiosco
+// quede listo para trabajar sin conexión sin que nadie tenga que
+// acordarse de tocar nada.
+// ---------------------------------------------------------------
+
+async function cacheAllDocs(notify) {
+  const manifestRes = await fetch('./data/docs-manifest.json');
+  const files = await manifestRes.json();
+  const cache = await caches.open(CACHE_DOCS);
+  let done = 0, failed = 0;
+
+  for (const path of files) {
+    const existing = await cache.match(path);
+    if (!existing) {
+      try {
+        const res = await fetch(path);
+        if (res.ok) await cache.put(path, res);
+        else failed++;
+      } catch (e) {
+        failed++;
+      }
+    }
+    done++;
+    if (notify) notify({ type: 'DOCS_CACHE_PROGRESS', done, total: files.length, failed });
+  }
+  if (notify) notify({ type: 'DOCS_CACHE_DONE', done, total: files.length, failed });
+}
+
+function broadcast(msg) {
+  self.clients.matchAll().then(list => list.forEach(c => c.postMessage(msg)));
+}
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'CACHE_DOCS_NOW') {
+    cacheAllDocs(broadcast);
+  }
+});
+
+// Intento automático en segundo plano, sin bloquear nada, poco después
+// de que este Service Worker tome control por primera vez.
+self.addEventListener('activate', () => {
+  setTimeout(() => cacheAllDocs(broadcast), 4000);
 });
